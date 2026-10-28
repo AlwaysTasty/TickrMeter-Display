@@ -126,16 +126,42 @@ function get(port, p, method = 'GET') {
 
   // Outage with nothing cached: 503 so the device keeps its last image.
   resetCache();
-  check('outage without cache: 503', async () => {});
   assert.equal((await get(port, '/feed.json')).status, 503);
+  results.push('ok  outage without cache: 503');
   mock.fail = false;
 
   assert.equal((await get(port, '/feed.json', 'POST')).status, 405);
   results.push('ok  POST rejected (405)');
   assert.equal((await get(port, '/frame/garbage.bin')).status, 404);
   results.push('ok  unsigned frame URL rejected (404)');
-
   server.close();
+
+  // ---- Netlify functions (web Request/Response API) ----
+  const netlifyOrigin = 'https://tickrmeter-display.netlify.app';
+  delete process.env.PUBLIC_ORIGIN;
+  const nFeed = (await import(path.join(__dirname, '../netlify/functions/feed.mjs'))).default;
+  const nFrame = (await import(path.join(__dirname, '../netlify/functions/frame.mjs'))).default;
+  for (const session of ['regular', null]) {
+    resetCache(); mock.session = session;
+    const label = `netlify ${session || 'closed'}`;
+    const fr = await nFeed(new Request(`${netlifyOrigin}/feed.json`), { site: { url: netlifyOrigin }, params: {} });
+    const fbody = Buffer.from(await fr.arrayBuffer());
+    check(`${label}: feed 200 with exact Content-Length`, () => {
+      assert.equal(fr.status, 200);
+      assert.equal(Number(fr.headers.get('content-length')), fbody.length);
+    });
+    const nf = sdk.validateFeed(fbody, { feedUrl: `${netlifyOrigin}/feed.json` });
+    const token = new URL(nf.frame.url).pathname.replace(/^\/frame\//, '');
+    const xr = await nFrame(new Request(nf.frame.url), { site: { url: netlifyOrigin }, params: { token } });
+    const xbody = Buffer.from(await xr.arrayBuffer());
+    check(`${label}: frame 4,736 bytes, SHA-256 matches`, () => {
+      assert.equal(xr.status, 200);
+      assert.equal(xbody.length, 4736);
+      assert.equal(Number(xr.headers.get('content-length')), 4736);
+      assert.equal(sdk.hashBitmap(xbody), nf.frame.sha256);
+    });
+  }
+
   console.log(results.join('\n'));
   console.log(`\n${results.length} checks passed`);
 })().catch(error => { console.error('FAILED:', error.message); server.close(); process.exitCode = 1; });

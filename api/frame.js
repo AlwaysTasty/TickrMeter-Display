@@ -1,19 +1,11 @@
 'use strict';
 
-// GET /frame/<payload>.<signature>.bin — the exact 4,736-byte image named in the feed.
-// Stateless: the signed payload is re-rendered deterministically, so its
-// SHA-256 matches the feed. Unsigned or altered URLs get 404.
+// Vercel: GET /frame/<payload>.<sig>.bin (see vercel.json rewrites).
 
-const { decodeFace, draw, send } = require('./_shared.cjs');
+const { frame } = require('../server/endpoints.cjs');
 
 module.exports = (req, res) => {
-  if (!['GET', 'HEAD'].includes(req.method)) return send(res, req, 405, null, null, 'no-store');
-  const token = String(req.query?.token || '').replace(/\.bin$/, '');
-  let face;
-  try { face = decodeFace(token); } catch { face = null; }
-  if (!face) return send(res, req, 404, null, null, 'no-store');
-  let bitmap;
-  try { bitmap = draw(face); } catch { return send(res, req, 404, null, null, 'no-store'); }
-  // Same URL always means the same bytes, so the CDN may cache it.
-  send(res, req, 200, 'application/octet-stream', Buffer.from(bitmap), 'public, max-age=86400, s-maxage=86400, immutable');
+  const r = frame({ method: req.method, token: req.query?.token, apiKey: process.env.FINNHUB_API_KEY });
+  res.writeHead(r.status, r.headers);
+  res.end(r.body ?? undefined);
 };

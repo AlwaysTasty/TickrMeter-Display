@@ -23,47 +23,58 @@ storage. Responses carry an exact `Content-Length`, no redirects, and the feed i
 
 | Path | What |
 | --- | --- |
-| `api/feed.js`, `api/frame.js`, `vercel.json` | Vercel endpoints and routes |
+| `server/endpoints.cjs` | Feed and frame logic shared by both hosts |
+| `netlify/functions/`, `netlify.toml` | Netlify functions (recommended host for the device) |
+| `api/`, `vercel.json` | Vercel functions (see the certificate note below) |
 | `market-face/core.cjs` | Settings (ticker, time zone, 12/24 h, extended hours, LED) and Finnhub data |
 | `market-face/face.cjs` | Pixel renderer for both faces |
 | `market-face/logo.cjs` | Converted logo (Σ mark); `logo-wordmark.cjs` is the full-word alternative |
 | `market-face/market.cjs`, `runner.json` | Same face for TickrMeter's App Runner on an always-on computer |
-| `tools/` | Font/logo converters, previews, local contract test |
+| `tools/` | Font/logo converters, previews, local contract test, `check-host.sh` |
 
-## Deploy to Vercel (free Hobby plan)
+## Which host: certificates matter
+
+Current TickrMeter firmware only trusts four root certificates: ISRG Root X1,
+GTS Root R4, Amazon Root CA 1 and DigiCert Global Root G2. Checked on 28 Oct 2026:
+
+| Host | Chain served | Device |
+| --- | --- | --- |
+| `*.netlify.app` | DigiCert Global G2 TLS RSA SHA256 2020 CA1 → DigiCert Global Root G2 | trusted |
+| `*.vercel.app` | Google Trust Services WR1 → GTS Root R1 → GlobalSign Root CA | **not trusted** |
+| Vercel custom domain | Let's Encrypt YR2 → Root YR → ISRG Root X1 (cross-sign) | should work; needs your own domain |
+| AWS Lambda function URL | Amazon RSA 2048 → Amazon Root CA 1 | trusted; heavier setup |
+
+## Deploy to Netlify (free plan)
 
 1. Get a free API key at https://finnhub.io/register.
-2. Put this folder in a GitHub repository, then in Vercel choose **Add New → Project**
-   and import it. Framework preset: **Other**. No build command.
-3. Before deploying, add the environment variable `FINNHUB_API_KEY` (Production).
-   Paste it into Vercel yourself; it never needs to be shared anywhere else.
-4. Deploy. The device URL is the **production** domain:
-   `https://<project>.vercel.app/feed.json` (not a per-deployment URL, which Vercel may
-   protect with a login).
+2. Put this folder in a GitHub repository. In Netlify choose **Add new project → Import an
+   existing project**, pick the repository. Leave the build command empty; `netlify.toml`
+   sets everything else.
+3. Under **Project configuration → Environment variables**, add `FINNHUB_API_KEY`
+   (scope: Functions). Paste it yourself; it never needs to be shared anywhere else.
+4. Deploy, and pick a site name. The device URL is `https://<site>.netlify.app/feed.json`.
 
-Optional: `PUBLIC_ORIGIN=https://your.domain` if you add a custom domain.
+Polling once a minute is about 86,000 function calls a month, well inside the free
+plan's monthly credits. On the free plan, running out of credits pauses all sites until
+the next month, so avoid other heavy projects on the same account.
+
+Vercel works the same way (import, set `FINNHUB_API_KEY`), but only with a custom domain.
+Optional on either host: `PUBLIC_ORIGIN=https://your.domain`.
 
 ## Verify before pointing the device at it
 
-From any terminal (`-H 'Accept-Encoding:'` mimics the device, which doesn't ask for compression):
-
 ```sh
-curl -s --http1.1 -D - -o feed.json -H 'Accept-Encoding:' https://<project>.vercel.app/feed.json
-# expect: HTTP/1.1 200, content-type application/json, content-length, no transfer-encoding
-curl -s --http1.1 -D - -o frame.bin -H 'Accept-Encoding:' "$(node -e 'console.log(require("./feed.json").frame.url)')"
-# expect: 200, application/octet-stream, content-length: 4736
-sha256sum frame.bin   # must equal frame.sha256 in feed.json
+tools/check-host.sh https://<site>.netlify.app
 ```
 
-The device trusts only ISRG Root X1, GTS Root R4, Amazon Root CA 1 and DigiCert Global
-Root G2. Vercel uses Let's Encrypt; confirm the served chain reaches ISRG Root X1 (for
-example with an SSL checker). If the device can't connect, AWS Lambda function URLs
-(Amazon Root CA 1) are the fallback host.
+This prints the certificate chain, then fetches the feed and frame over HTTP/1.1 without
+asking for compression (like the device) and checks: 200, exact `Content-Length`, no
+`Transfer-Encoding`/`Content-Encoding`, 4,736-byte frame whose SHA-256 matches the feed.
 
 ## Local checks
 
 ```sh
-node tools/local-test.cjs        # 29 contract checks, Finnhub mocked
+node tools/local-test.cjs        # 33 contract checks (Vercel + Netlify handlers), Finnhub mocked
 node tools/preview.cjs ./out     # sample PNGs (made-up prices)
 python3 tools/convert_logo.py logo.png --crop 0,0,72,109 --max-width 50 --max-height 66
 ```
