@@ -136,31 +136,37 @@ function get(port, p, method = 'GET') {
   results.push('ok  unsigned frame URL rejected (404)');
   server.close();
 
-  // ---- Netlify functions (web Request/Response API) ----
-  const netlifyOrigin = 'https://tickrmeter-display.netlify.app';
-  delete process.env.PUBLIC_ORIGIN;
-  const nFeed = (await import(path.join(__dirname, '../netlify/functions/feed.mjs'))).default;
-  const nFrame = (await import(path.join(__dirname, '../netlify/functions/frame.mjs'))).default;
+  // ---- Plain Node server (Render) ----
+  delete process.env.PUBLIC_ORIGIN; // the Node server should derive its origin from Render
+  process.env.RENDER_EXTERNAL_URL = 'https://tickrmeter.onrender.com';
+  const node = require('../server/node-server.cjs').createServer();
+  await new Promise(r => node.listen(0, '127.0.0.1', r));
+  const nodePort = node.address().port;
   for (const session of ['regular', null]) {
-    resetCache(); mock.session = session;
-    const label = `netlify ${session || 'closed'}`;
-    const fr = await nFeed(new Request(`${netlifyOrigin}/feed.json`), { site: { url: netlifyOrigin }, params: {} });
-    const fbody = Buffer.from(await fr.arrayBuffer());
-    check(`${label}: feed 200 with exact Content-Length`, () => {
+    resetCache(); mock.session = session; calls = [];
+    const label = `node-server ${session || 'closed'}`;
+    const fr = await get(nodePort, '/feed.json');
+    check(`${label}: feed 200, exact Content-Length, not chunked`, () => {
       assert.equal(fr.status, 200);
-      assert.equal(Number(fr.headers.get('content-length')), fbody.length);
+      assert.equal(Number(fr.headers['content-length']), fr.body.length);
+      assert.equal(fr.headers['transfer-encoding'], undefined);
     });
-    const nf = sdk.validateFeed(fbody, { feedUrl: `${netlifyOrigin}/feed.json` });
-    const token = new URL(nf.frame.url).pathname.replace(/^\/frame\//, '');
-    const xr = await nFrame(new Request(nf.frame.url), { site: { url: netlifyOrigin }, params: { token } });
-    const xbody = Buffer.from(await xr.arrayBuffer());
-    check(`${label}: frame 4,736 bytes, SHA-256 matches`, () => {
+    const nf = sdk.validateFeed(fr.body, { feedUrl: 'https://tickrmeter.onrender.com/feed.json' });
+    const xr = await get(nodePort, new URL(nf.frame.url).pathname);
+    check(`${label}: frame 4,736 bytes, SHA-256 matches, not chunked`, () => {
       assert.equal(xr.status, 200);
-      assert.equal(xbody.length, 4736);
-      assert.equal(Number(xr.headers.get('content-length')), 4736);
-      assert.equal(sdk.hashBitmap(xbody), nf.frame.sha256);
+      assert.equal(xr.body.length, 4736);
+      assert.equal(Number(xr.headers['content-length']), 4736);
+      assert.equal(xr.headers['transfer-encoding'], undefined);
+      assert.equal(sdk.hashBitmap(xr.body), nf.frame.sha256);
     });
   }
+  calls = [];
+  const hz = await get(nodePort, '/healthz');
+  check('node-server: /healthz 200 without any API call', () => { assert.equal(hz.status, 200); assert.equal(calls.length, 0); });
+  assert.equal((await get(nodePort, '/nope')).status, 404);
+  results.push('ok  node-server: unknown path 404');
+  node.close();
 
   console.log(results.join('\n'));
   console.log(`\n${results.length} checks passed`);

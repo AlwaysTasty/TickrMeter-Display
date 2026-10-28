@@ -24,7 +24,7 @@ storage. Responses carry an exact `Content-Length`, no redirects, and the feed i
 | Path | What |
 | --- | --- |
 | `server/endpoints.cjs` | Feed and frame logic shared by both hosts |
-| `netlify/functions/`, `netlify.toml` | Netlify functions (recommended host for the device) |
+| `server/node-server.cjs`, `render.yaml` | Plain Node server and Render blueprint (current host) |
 | `api/`, `vercel.json` | Vercel functions (see the certificate note below) |
 | `market-face/core.cjs` | Settings (ticker, time zone, 12/24 h, extended hours, LED) and Finnhub data |
 | `market-face/face.cjs` | Pixel renderer for both faces |
@@ -32,39 +32,40 @@ storage. Responses carry an exact `Content-Length`, no redirects, and the feed i
 | `market-face/market.cjs`, `runner.json` | Same face for TickrMeter's App Runner on an always-on computer |
 | `tools/` | Font/logo converters, previews, local contract test, `check-host.sh` |
 
-## Which host: certificates matter
+## Which host: certificates and response framing matter
 
-Current TickrMeter firmware only trusts four root certificates: ISRG Root X1,
-GTS Root R4, Amazon Root CA 1 and DigiCert Global Root G2. Checked on 28 Oct 2026:
+Current TickrMeter firmware trusts only ISRG Root X1, GTS Root R4, Amazon Root CA 1 and
+DigiCert Global Root G2, and rejects chunked or compressed responses. Checked 28 Oct 2026:
 
-| Host | Chain served | Device |
-| --- | --- | --- |
-| `*.netlify.app` | DigiCert Global G2 TLS RSA SHA256 2020 CA1 → DigiCert Global Root G2 | trusted |
-| `*.vercel.app` | Google Trust Services WR1 → GTS Root R1 → GlobalSign Root CA | **not trusted** |
-| Vercel custom domain | Let's Encrypt YR2 → Root YR → ISRG Root X1 (cross-sign) | should work; needs your own domain |
-| AWS Lambda function URL | Amazon RSA 2048 → Amazon Root CA 1 | trusted; heavier setup |
+| Host | Certificate chain | Exact Content-Length | Use |
+| --- | --- | --- | --- |
+| Render (`*.onrender.com`) | GTS WE1 → GTS Root R4 (trusted) | Node sets it; verify live | **current choice (free)** |
+| Vercel + your own domain | Let's Encrypt YR2 → Root YR → ISRG Root X1 (trusted) | yes (verified) | later, once you have a domain |
+| Vercel (`*.vercel.app`) | GTS WR1 → GTS Root R1 (not trusted) | yes | not usable by the device |
+| Netlify (`*.netlify.app`) | DigiCert → Global Root G2 (trusted) | no, always chunked | not usable |
 
-## Deploy to Netlify (free plan)
+## Deploy to Render (free)
 
-1. Get a free API key at https://finnhub.io/register.
-2. Put this folder in a GitHub repository. In Netlify choose **Add new project → Import an
-   existing project**, pick the repository. Leave the build command empty; `netlify.toml`
-   sets everything else.
-3. Under **Project configuration → Environment variables**, add `FINNHUB_API_KEY`
-   (scope: Functions). Paste it yourself; it never needs to be shared anywhere else.
-4. Deploy, and pick a site name. The device URL is `https://<site>.netlify.app/feed.json`.
+1. Push this folder to your GitHub repository.
+2. In Render choose **New → Blueprint**, pick the repository. `render.yaml` creates one
+   free web service named `tickrmeter` (start command `node server/node-server.cjs`,
+   health check `/healthz`, which spends no API calls).
+3. When asked for `FINNHUB_API_KEY`, paste your key yourself.
+4. The device URL is `https://<service>.onrender.com/feed.json`.
 
-Polling once a minute is about 86,000 function calls a month, well inside the free
-plan's monthly credits. On the free plan, running out of credits pauses all sites until
-the next month, so avoid other heavy projects on the same account.
+The free tier sleeps after 15 minutes without requests; the display's once-a-minute polling
+keeps it awake, and one always-on service fits the 750 free hours a month.
 
-Vercel works the same way (import, set `FINNHUB_API_KEY`), but only with a custom domain.
-Optional on either host: `PUBLIC_ORIGIN=https://your.domain`.
+## Moving to Vercel later
+
+Your Vercel project already runs the same code. Add your domain to it (DNS only, not
+proxied), optionally set `PUBLIC_ORIGIN=https://<your domain>`, run the check below, then
+point the device at `https://<your domain>/feed.json` and delete the Render service.
 
 ## Verify before pointing the device at it
 
 ```sh
-tools/check-host.sh https://<site>.netlify.app
+tools/check-host.sh https://<service>.onrender.com
 ```
 
 This prints the certificate chain, then fetches the feed and frame over HTTP/1.1 without
@@ -74,7 +75,7 @@ asking for compression (like the device) and checks: 200, exact `Content-Length`
 ## Local checks
 
 ```sh
-node tools/local-test.cjs        # 33 contract checks (Vercel + Netlify handlers), Finnhub mocked
+node tools/local-test.cjs        # contract checks for the Vercel handlers and Node server, Finnhub mocked
 node tools/preview.cjs ./out     # sample PNGs (made-up prices)
 python3 tools/convert_logo.py logo.png --crop 0,0,72,109 --max-width 50 --max-height 66
 ```

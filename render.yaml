@@ -1,0 +1,15 @@
+# Render Blueprint: one free web service serving the TickrMeter feed.
+# *.onrender.com certificates chain to GTS Root R4, which the TickrMeter firmware trusts.
+services:
+  - type: web
+    name: tickrmeter
+    runtime: node
+    plan: free
+    buildCommand: "true"
+    startCommand: node server/node-server.cjs
+    healthCheckPath: /healthz
+    envVars:
+      - key: FINNHUB_API_KEY
+        sync: false # entered by you in the Render dashboard
+      - key: NODE_VERSION
+        value: "22"
