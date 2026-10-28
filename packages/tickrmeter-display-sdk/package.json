@@ -1,0 +1,18 @@
+{
+  "name": "@tickrmeter/display-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Portable TickrMeter display SDK with public-feed device examples",
+  "type": "commonjs",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "bin": {
+    "tickrmeter-display": "bin/tickrmeter-display.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "example": "node examples/generate.js"
+  }
+}

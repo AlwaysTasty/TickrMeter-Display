@@ -1,0 +1,24 @@
+# Linux customer server only. The runner deliberately listens on loopback;
+# an existing, customer-approved HTTPS reverse proxy provides public retrieval.
+services:
+  tickrmeter-apps:
+    hostname: tickrmeter-app-runner
+    build:
+      context: ../../..
+      dockerfile: packages/tickrmeter-app-runner/deploy/Dockerfile
+    network_mode: host
+    user: "${TICKRMETER_UID:-1000}:${TICKRMETER_GID:-1000}"
+    restart: unless-stopped
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    volumes:
+      - ../../../my-app:/work
+    logging:
+      driver: json-file
+      options:
+        max-size: "2m"
+        max-file: "3"

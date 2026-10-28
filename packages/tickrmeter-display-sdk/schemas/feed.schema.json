@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tickrmeter:external-display-feed:v1",
+  "title": "TickrMeter external display feed v1 (draft firmware contract)",
+  "description": "UTF-8 JSON <=2048 bytes. Runtime validation adds byte limits, public HTTPS host and same-origin policies.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["v", "frame", "observedAt", "led"],
+  "properties": {
+    "v": { "const": 1 },
+    "frame": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "sha256", "format"],
+      "properties": {
+        "url": { "type": "string", "format": "uri", "maxLength": 512, "pattern": "^https://" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "format": { "const": "tickrmeter-mono-v1" }
+      }
+    },
+    "observedAt": { "type": "string", "format": "date-time", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$" },
+    "led": {
+      "oneOf": [
+        { "type": "object", "additionalProperties": false, "required": ["color", "mode"], "properties": { "color": { "const": "off" }, "mode": { "const": "off" } } },
+        { "type": "object", "additionalProperties": false, "required": ["color", "mode"], "properties": { "color": { "enum": ["red", "green", "blue", "purple", "cyan", "yellow", "white"] }, "mode": { "const": "solid" } } }
+      ]
+    }
+  }
+}

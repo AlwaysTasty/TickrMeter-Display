@@ -1,0 +1,30 @@
+# Keep the build context limited to the portable runtime. Customer files,
+# provider credentials, generated output and the private checkout stay out.
+**
+!packages/
+!packages/tickrmeter-display-sdk/
+!packages/tickrmeter-display-sdk/index.js
+!packages/tickrmeter-display-sdk/constants.js
+!packages/tickrmeter-display-sdk/package.json
+!packages/tickrmeter-display-sdk/lib/
+!packages/tickrmeter-display-sdk/lib/png.js
+!packages/tickrmeter-display-sdk/lib/files.js
+!packages/tickrmeter-display-sdk/schemas/
+!packages/tickrmeter-display-sdk/schemas/feed.schema.json
+!packages/tickrmeter-app-runner/
+!packages/tickrmeter-app-runner/index.js
+!packages/tickrmeter-app-runner/package.json
+!packages/tickrmeter-app-runner/bin/
+!packages/tickrmeter-app-runner/bin/tickrmeter-app-runner.js
+!packages/tickrmeter-app-runner/lib/
+!packages/tickrmeter-app-runner/lib/config.js
+!packages/tickrmeter-app-runner/lib/storage.js
+!packages/tickrmeter-app-runner/lib/runtime.js
+!packages/tickrmeter-app-runner/lib/project.js
+!packages/tickrmeter-app-runner/lib/render.js
+!packages/tickrmeter-app-runner/lib/font.js
+!packages/tickrmeter-app-runner/templates/
+!packages/tickrmeter-app-runner/templates/clock.cjs
+!packages/tickrmeter-app-runner/templates/metric.cjs
+!packages/tickrmeter-app-runner/schemas/
+!packages/tickrmeter-app-runner/schemas/config.schema.json

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "trailingSlash": false,
+  "rewrites": [
+    { "source": "/feed.json", "destination": "/api/feed" },
+    { "source": "/frame/:token", "destination": "/api/frame?token=:token" }
+  ],
+  "functions": {
+    "api/*.js": { "maxDuration": 15, "memory": 256 }
+  }
+}

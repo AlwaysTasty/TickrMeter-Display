@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "publicBaseUrl": "https://display.example.com",
+  "acknowledgePublicData": false,
+  "outputDir": "./output",
+  "port": 8787,
+  "apps": [
+    {
+      "id": "market",
+      "module": "./market.cjs",
+      "intervalSeconds": 60,
+      "timeoutSeconds": 30,
+      "staleAfterSeconds": 345600,
+      "retainFrames": 5,
+      "secrets": { "apiKey": "FINNHUB_API_KEY" }
+    }
+  ]
+}

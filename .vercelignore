@@ -1,0 +1,9 @@
+assets
+previews
+tools
+market-face/output
+market-face/*-preview.png
+packages/tickrmeter-app-runner
+packages/tickrmeter-display-sdk/examples
+packages/tickrmeter-display-sdk/bin
+*.md

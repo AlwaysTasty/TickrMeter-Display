@@ -1,0 +1,11 @@
+{
+  "name": "sls-tickrmeter",
+  "private": true,
+  "description": "Two-state SLS market face for a TickrMeter, served from Vercel",
+  "type": "commonjs",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "preview": "node tools/preview.cjs ./previews/frames",
+    "test": "node tools/local-test.cjs"
+  }
+}

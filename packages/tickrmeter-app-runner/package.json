@@ -1,0 +1,14 @@
+{
+  "name": "@tickrmeter/app-runner",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Customer-operated TickrMeter collection, rendering and feed runtime",
+  "type": "commonjs",
+  "main": "index.js",
+  "bin": {
+    "tickrmeter-app-runner": "bin/tickrmeter-app-runner.js"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

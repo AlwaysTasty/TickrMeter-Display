@@ -1,0 +1,4 @@
+market-face/output/
+node_modules/
+.vercel/
+.env*

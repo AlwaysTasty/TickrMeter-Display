@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TickrMeter App Runner configuration",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "outputDir",
+        "apps"
+      ],
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "publicBaseUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "Public HTTPS origin only. No path, credentials, query, or fragment. Example domains generate local previews but disable HTTP delivery."
+        },
+        "acknowledgePublicData": {
+          "type": "boolean",
+          "default": false,
+          "description": "Deliberate consent to expose every configured app's feed and frame without authentication. False disables every HTTP route."
+        },
+        "outputDir": {
+          "type": "string",
+          "minLength": 1
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 65535,
+          "default": 8787
+        },
+        "apps": {
+          "$ref": "#/$defs/apps"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "mode",
+        "network",
+        "baseUrl",
+        "bindAddress",
+        "tls",
+        "credentialsFile",
+        "outputDir",
+        "apps"
+      ],
+      "properties": {
+        "version": {
+          "const": 2
+        },
+        "mode": {
+          "const": "private"
+        },
+        "network": {
+          "enum": [
+            "lan",
+            "internet"
+          ]
+        },
+        "baseUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "HTTPS origin only. LAN permits private RFC1918 IPv4 or local DNS; internet requires public DNS. No credentials, query, fragment, or path."
+        },
+        "bindAddress": {
+          "type": "string",
+          "description": "Explicit LAN RFC1918 interface IPv4; internet mode requires 127.0.0.1 behind a customer HTTPS proxy. No wildcard bind."
+        },
+        "tls": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "certificateFile",
+            "keyFile"
+          ],
+          "properties": {
+            "certificateFile": {
+              "type": "string",
+              "minLength": 1
+            },
+            "keyFile": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Protected PEM key file; literal secret values are never config fields."
+            }
+          }
+        },
+        "credentialsFile": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Protected reloadable JSON store containing dedicated scoped token hashes, never plaintext tokens."
+        },
+        "outputDir": {
+          "type": "string",
+          "minLength": 1
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 65535,
+          "default": 8787
+        },
+        "apps": {
+          "$ref": "#/$defs/apps"
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "apps": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "module"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,39}$",
+            "description": "Unique within this runner."
+          },
+          "module": {
+            "type": "string",
+            "pattern": "^\\./.+\\.(cjs|mjs|js)$",
+            "description": "Trusted local app module inside the config directory."
+          },
+          "intervalSeconds": {
+            "type": "integer",
+            "minimum": 60,
+            "maximum": 86400,
+            "default": 300
+          },
+          "timeoutSeconds": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 300,
+            "default": 20,
+            "description": "Must not exceed intervalSeconds."
+          },
+          "staleAfterSeconds": {
+            "type": "integer",
+            "minimum": 60,
+            "maximum": 604800,
+            "description": "Must be at least intervalSeconds. Defaults to max(180, 3 * intervalSeconds)."
+          },
+          "retainFrames": {
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 32,
+            "default": 3
+          },
+          "secrets": {
+            "type": "object",
+            "maxProperties": 32,
+            "propertyNames": {
+              "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+            },
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]{0,127}$"
+            }
+          }
+        }
+      }
+    }
+  }
+}
