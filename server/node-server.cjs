@@ -20,7 +20,7 @@ function createServer() {
     const path = (req.url || '').split('?')[0];
     if (path === '/healthz') {
       // Health checks must not spend API calls.
-      return write(req, res, { status: 200, headers: { 'Content-Length': '2', 'Content-Type': 'text/plain', 'Cache-Control': 'no-store' }, body: Buffer.from('ok') });
+      return write(req, res, { status: 200, headers: { 'Content-Length': '2', 'Content-Type': 'text/plain', 'Cache-Control': 'no-store, no-transform' }, body: Buffer.from('ok') });
     }
     if (path === '/feed.json') return write(req, res, await endpoints.feed({ method: req.method, origin: origin(), apiKey: apiKey() }));
     const match = /^\/frame\/([^/]+)$/.exec(path);

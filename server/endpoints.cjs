@@ -56,7 +56,7 @@ function reply(method, status, type, body, cache) {
   if (type) headers['Content-Type'] = type;
   return { status, headers, body: method === 'HEAD' || !body ? null : body };
 }
-const empty = (method, status) => reply(method, status, null, null, 'no-store');
+const empty = (method, status) => reply(method, status, null, null, 'no-store, no-transform');
 
 function normaliseOrigin(raw) {
   return sdk.validateSourceUrl(String(raw || '').replace(/\/+$/, '') + '/').replace(/\/$/, '');
@@ -76,7 +76,7 @@ async function feed({ method, origin, apiKey, now = new Date() }) {
       observedAt: result.observedAt,
       led: result.led,
     });
-    return reply(method, 200, 'application/json', Buffer.from(JSON.stringify(document)), 'no-store');
+    return reply(method, 200, 'application/json', Buffer.from(JSON.stringify(document)), 'no-store, no-transform');
   } catch {
     // No data yet or misconfigured: the device keeps showing its last good image.
     return empty(method, 503);
@@ -91,7 +91,7 @@ function frame({ method, token, apiKey }) {
   if (!face) return empty(method, 404);
   try {
     // Same URL always means the same bytes, so caches may keep it.
-    return reply(method, 200, 'application/octet-stream', Buffer.from(draw(face)), 'public, max-age=86400, immutable');
+    return reply(method, 200, 'application/octet-stream', Buffer.from(draw(face)), 'public, max-age=86400, immutable, no-transform');
   } catch {
     return empty(method, 404);
   }
