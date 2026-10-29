@@ -58,7 +58,11 @@ async function snapshot(now, apiKey, signal) {
       cache.statusAt = t;
     } catch { /* keep the previous status or fall back to the local schedule */ }
   }
-  const session = cache.status && t - cache.statusAt < 30 * 60e3 ? cache.status.session : localSession(now);
+  // Test switch: set FORCE_SESSION=regular|pre|post on the host to show the
+  // market-open face outside market hours. Remove it to return to normal.
+  const forced = ['regular', 'pre', 'post'].includes(process.env.FORCE_SESSION) ? process.env.FORCE_SESSION : null;
+  const session = forced
+    ?? (cache.status && t - cache.statusAt < 30 * 60e3 ? cache.status.session : localSession(now));
   const open = isOpen(session);
 
   if (!cache.quote || open || t - cache.quoteAt >= SETTINGS.quoteEveryClosedMinutes * 60e3) {
